@@ -1,0 +1,71 @@
+services:
+  app:
+    build:
+      context: ./app
+    container_name: siem-flask-app
+    ports:
+      - "5000:5000"
+    volumes:
+      - app-logs:/logs
+    environment:
+      LOG_FILE: /logs/app.log
+      FLASK_ENV: production
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:5000/', timeout=2)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.4
+    container_name: siem-elasticsearch
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      xpack.security.http.ssl.enabled: "false"
+      ES_JAVA_OPTS: "-Xms1g -Xmx1g"
+    ports:
+      - "9200:9200"
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=1s' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 30s
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:8.13.4
+    container_name: siem-kibana
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    environment:
+      ELASTICSEARCH_HOSTS: http://elasticsearch:9200
+      XPACK_SECURITY_ENABLED: "false"
+      XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY: "local-lab-minimal-siem-32-byte-key"
+      XPACK_REPORTING_ENCRYPTIONKEY: "local-lab-minimal-siem-32-byte-key"
+      XPACK_SECURITY_ENCRYPTIONKEY: "local-lab-minimal-siem-32-byte-key"
+    ports:
+      - "5601:5601"
+
+  fluent-bit:
+    image: fluent/fluent-bit:3.2
+    container_name: siem-fluent-bit
+    depends_on:
+      app:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+    volumes:
+      - app-logs:/logs:ro
+      - fluent-bit-state:/fluent-bit/tail-db
+      - ./fluent-bit/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro
+      - ./fluent-bit/parsers.conf:/fluent-bit/etc/parsers.conf:ro
+
+volumes:
+  app-logs:
+  elasticsearch-data:
+  fluent-bit-state:
