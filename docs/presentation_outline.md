@@ -46,6 +46,6 @@ Show the Kibana alert rule firing after the threshold is crossed.
 
 What works: the app produces JSON logs, Fluent Bit forwards them, Elasticsearch stores them, Kibana shows them, and the threshold rule detects repeated failed logins.
 
-Limitations: the stack is local-only, Elastic security is disabled, the rule is threshold-based, there is no multi-service correlation, and there is no production notification channel.
+Limitations: the stack is local-only, Elastic security is disabled, the rule is threshold-based, there is no multi-service correlation, and Telegram notification needs bot credentials.
 
-Production improvements: enable Elastic security, add Slack or email notifications, collect host and container logs, build dashboards, add more detections, and define an incident response workflow.
+Production improvements: enable Elastic security, use native Kibana webhook notifications where licensing allows it, collect host and container logs, build dashboards, add more detections, and define an incident response workflow.
